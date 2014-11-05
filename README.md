@@ -75,3 +75,11 @@ Playbook
   roles:
     - role: zabbix-api
 ```
+
+License
+=======
+MIT
+
+Author Information
+==================
+This role was created in 2014 by Robert Jerzak.
