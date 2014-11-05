@@ -3,7 +3,7 @@ galaxy_info:
   author: Robert Jerzak
   description: Synchronizes hosts state (groups, templates, macros) with Zabbix.
   license: MIT
-  min_ansible_version: 1.2
+  min_ansible_version: 1.4
   - name: Ubuntu
 dependencies: []
   
