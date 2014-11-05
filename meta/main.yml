@@ -4,6 +4,9 @@ galaxy_info:
   description: Synchronizes hosts state (groups, templates, macros) with Zabbix.
   license: MIT
   min_ansible_version: 1.4
+  platforms:
   - name: Ubuntu
+  categories:
+  - monitoring
 dependencies: []
   
