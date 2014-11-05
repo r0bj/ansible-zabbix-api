@@ -73,7 +73,7 @@ Playbook
 - name: zabbix API
   hosts: all
   roles:
-    - role: zabbix-api
+    - role: robj.zabbix-api
 ```
 
 License
