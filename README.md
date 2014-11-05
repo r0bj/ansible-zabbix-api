@@ -56,6 +56,7 @@ Variables
       password: 'secretpassword'
   
     zabbix:
+      default_group: ansible
       templates:
         - mysql
         - nginx
