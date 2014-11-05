@@ -1,0 +1,597 @@
+#!/usr/bin/python
+
+# Copyright (c) 2014 Robert Jerzak
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import sys
+import json
+import re
+import requests
+import signal
+import shlex
+import itertools
+
+connection_timeout = 5
+verify_ssl = False
+
+class ZabbixAPIError(Exception):
+    pass
+
+class Alarm(Exception):
+    pass
+
+def alarm_handler(signum, frame):
+	raise Alarm
+
+class ZabbixConnection:
+	def __init__(self, url, user, passwd, basicauth_user, basicauth_pass):
+		self.__api_url = url
+		self.__api_user = user
+		self.__api_pass = passwd
+		self.__api_basicauth_user = basicauth_user
+		self.__api_basicauth_pass = basicauth_pass
+		self.__api_token = self.__auth()
+
+	def __callAPI(self, json_data):
+		headers = {
+			'Content-Type': 'application/json-rpc',
+			'User-Agent': 'ZabbixAPI Client',
+		}
+
+		signal.signal(signal.SIGALRM, alarm_handler)
+		signal.alarm(connection_timeout)
+		try:
+			if self.__api_basicauth_user and self.__api_basicauth_pass:
+				r = requests.post(
+					self.__api_url,
+					data=json_data,
+					headers=headers,
+					timeout=connection_timeout,
+					verify=verify_ssl,
+					auth=(self.__api_basicauth_user, self.__api_basicauth_pass))
+			else:
+				r = requests.post(
+					self.__api_url,
+					data=json_data,
+					headers=headers,
+					timeout=connection_timeout,
+					verify=verify_ssl)
+			signal.alarm(0)
+		except requests.exceptions.ConnectionError:
+			raise ZabbixAPIError('HTTP connection error, json: %s' % self.__blind_password(json_data))
+		except Alarm:
+			raise ZabbixAPIError('HTTP connection timeout, json: %s' % self.__blind_password(json_data))
+
+		if r.status_code == 200 and r.content != '':
+			try:
+				c = json.loads(r.content)
+			except ValueError, e:
+				raise ZabbixAPIError(e)
+			if 'error' in c:
+				raise ZabbixAPIError('API error: code: %s message: %s data: %s'
+					%(str(c['error']['code']), str(c['error']['message']), str(c['error']['data'])))
+			elif 'result' in c:
+				return c['result']
+			else:
+				raise ZabbixAPIError('Wrong API result, json: %s' % self.__blind_password(json_data))
+		else:
+			raise ZabbixAPIError('Wrong API response content: HTTP code %s, json: %s'
+				%(r.status_code, self.__blind_password(json_data)))
+
+	def __auth(self):
+		req = {
+			'jsonrpc': '2.0',
+			'method': 'user.login',
+			'params': {
+				'user': self.__api_user,
+				'password': self.__api_pass,
+			},
+			'id': '0',
+		}
+
+		token = self.__callAPI(json.dumps(req))
+		if token != '':
+			return token
+		else:
+			raise ZabbixAPIError('Wrong API auth token')
+
+	def __blind_password(self, json_data):
+		dict = json.loads(json_data)
+		if 'params' in dict and 'password' in dict['params']:
+			dict['params']['password'] = 'XXX'
+		return json.dumps(dict)
+
+	def send(self, data):
+		data['auth'] = self.__api_token
+		data['jsonrpc'] = '2.0'
+		data['id'] = '0'
+		return self.__callAPI(json.dumps(data))
+
+class ZabbixAPI:
+	def __init__(self, url, user, passwd, basicauth_user, basicauth_pass):
+		self.__zconn = ZabbixConnection(url, user, passwd, basicauth_user, basicauth_pass)
+		self.__changed = []
+
+	def get_changed(self):
+		return self.__changed
+
+	def __find_hostgroupid(self, hostgroup):
+		req = {
+			'method': 'hostgroup.get',
+			'params': {
+				'output': [
+					'groupid'
+				],
+				'filter': {
+					'name': [
+						hostgroup
+					],
+				},
+			},
+		}
+
+		result = self.__zconn.send(req)
+		try:
+			return result[0]['groupid']
+		except (KeyError, IndexError):
+			raise ZabbixAPIError('Error: cannot find hostgroupid for hostgroup: %s' % hostgroup)
+
+	def __find_hostid(self, hostname):
+		req = {
+			'method': 'host.get',
+			'params': {
+				'output': [
+					'hostid'
+				],
+				'filter': {
+					'name': [
+						hostname
+					],
+				},
+			},
+		}
+
+		result = self.__zconn.send(req)
+		try:
+			return result[0]['hostid']
+		except (KeyError, IndexError):
+			raise ZabbixAPIError('Error: cannot find hostnameid for hostname: %s' % hostname)
+
+	def __find_templateid(self, template):
+		req = {
+			'method': 'template.get',
+			'params': {
+				'output': [
+					'templateid'
+				],
+				'filter': {
+					'host': [
+						template
+					],
+				},
+			},
+		}
+
+		result = self.__zconn.send(req)
+		try:
+			return result[0]['templateid']
+		except (KeyError, IndexError):
+			raise ZabbixAPIError('Error: cannot find templateid for template: %s' % template)
+
+	def __get_host_if_exists(self, hostname):
+		req = {
+			'method': 'host.get',
+			'params': {
+				'output': 'extend',
+				'selectInterfaces': 'extend',
+				'selectMacros': 'extend',
+				'selectGroups': 'extend',
+				'selectParentTemplates': 'extend',
+				'filter': {
+					'host': [
+						hostname
+					],
+				},
+			},
+		}
+
+		result = self.__zconn.send(req)
+		try:
+			return result[0]
+		except (KeyError, IndexError):
+			return False
+
+	def __update_interface_ip(self, interfaceid, ip):
+		req = {
+			'method': 'hostinterface.update',
+			'params': {
+				'interfaceid': interfaceid,
+				'ip': ip,
+			},
+		}
+
+		result = self.__zconn.send(req)
+		try:
+			return result['interfaceids'][0]
+		except (KeyError, IndexError):
+			raise ZabbixAPIError('Error: cannot update interface id: %s' % interfaceid)
+
+	def __update_host_groups(self, hostid, hostgroups):
+		req = {
+			'method': 'host.update',
+			'params': {
+				'hostid': hostid,
+				'groups': self.__get_hostgroupids(hostgroups),
+			},
+		}
+
+		result = self.__zconn.send(req)
+		try:
+			return result['hostids'][0]
+		except (KeyError, IndexError):
+			raise ZabbixAPIError('Error: cannot update host id: %s' % hostid)
+
+	def __remove_host(self, hostid):
+		req = {
+			'method': 'host.delete',
+			'params': [
+				hostid,
+			],
+		}
+
+		result = self.__zconn.send(req)
+		try:
+			return result['hostids'][0]
+		except (KeyError, IndexError):
+			raise ZabbixAPIError('Error: cannot remove host id: %s' % hostid)
+
+	def __update_host_template_clear(self, hostid, templateid):
+		req = {
+			'method': 'host.update',
+			'params': {
+				'hostid': hostid,
+				'templates_clear': {
+					'templateid': templateid,
+				},
+			},
+		}
+
+		result = self.__zconn.send(req)
+		try:
+			return result['hostids'][0]
+		except (KeyError, IndexError):
+			raise ZabbixAPIError('Error: cannot update host id: %s' % hostid)
+
+	def __update_host_status(self, hostid, status):
+		req = {
+			'method': 'host.update',
+			'params': {
+				'hostid': hostid,
+				'status': status,
+			},
+		}
+
+		result = self.__zconn.send(req)
+		try:
+			return result['hostids'][0]
+		except (KeyError, IndexError):
+			raise ZabbixAPIError('Error: cannot update host id: %s' % hostid)
+
+	def __update_host_templates(self, hostid, templates):
+		req = {
+			'method': 'host.update',
+			'params': {
+				'hostid': hostid,
+				'templates': self.__get_templateids(templates),
+			},
+		}
+
+		result = self.__zconn.send(req)
+		try:
+			return result['hostids'][0]
+		except (KeyError, IndexError):
+			raise ZabbixAPIError('Error: cannot update host id: %s' % hostid)
+
+	def __compare_ip(self, hostdump, ip):
+		for interface in hostdump['interfaces']:
+			if interface['main'] == '1':
+				if interface['ip'] != ip:
+					self.__update_interface_ip(interface['interfaceid'], ip)
+					self.__changed.append('set ip: %s' %ip)
+
+	def __compare_hostgroups(self, hostdump, hostgroups):
+		dump_groups = []
+		update = False
+		for dump_group in hostdump['groups']:
+			dump_groups.append(dump_group['name'])
+			if dump_group['name'] not in hostgroups:
+				self.__update_host_groups(hostdump['hostid'], hostgroups)
+				self.__changed.append('add to group(s): %s' %(', '.join(hostgroups)))
+				update = True
+				break
+		if not update:
+			for hostgroup in hostgroups:
+				if hostgroup not in dump_groups:
+					self.__update_host_groups(hostdump['hostid'], hostgroups)
+					self.__changed.append('add to group(s): %s' %(', '.join(hostgroups)))
+					break
+
+	def __compare_templates(self, hostdump, templates):
+		dump_templates = []
+		for dump_template in hostdump['parentTemplates']:
+			if dump_template['name'] not in templates:
+				self.__update_host_template_clear(hostdump['hostid'], dump_template['templateid'])
+				self.__changed.append('unlink and clear template: %s' %dump_template['name'])
+			else:
+				dump_templates.append(dump_template['name'])
+
+		for template in templates:
+			if template not in dump_templates:
+				self.__update_host_templates(hostdump['hostid'], templates)
+				self.__changed.append('link to templates: %s' %(', ').join(templates))
+				break
+
+	def __list_to_dict(self, list):
+		i = iter(list)
+		return dict(itertools.izip(i, i))
+
+	def __compare_macros(self, hostdump, macros_list):
+		macros = self.__list_to_dict(macros_list)
+		keyvalues = {}
+		for key, value in macros.items():
+			keyvalues[key + value] = { 'macro': key, 'value': value }
+
+		dump_keyvalues = []
+		for dump_macro in hostdump['macros']:
+			if dump_macro['macro'] + dump_macro['value'] not in keyvalues:
+				self.__delete_macro(dump_macro['hostmacroid'])
+				self.__changed.append('delete macro: %s' %dump_macro['macro'])
+			else:
+				dump_keyvalues.append(dump_macro['macro'] + dump_macro['value'])
+
+		for keyvalue in keyvalues:
+			if keyvalue not in dump_keyvalues:
+				self.__create_macro(hostdump['hostid'], keyvalues[keyvalue]['macro'], keyvalues[keyvalue]['value'])
+				self.__changed.append('add macro: %s' %keyvalues[keyvalue]['macro'])
+
+	def sync_host(self, hostname, ip, hostgroups, macros, templates):
+		hostdump = self.__get_host_if_exists(hostname)
+		if hostdump:
+			self.__compare_ip(hostdump, ip)
+			self.__compare_hostgroups(hostdump, hostgroups)
+			self.__compare_templates(hostdump, templates)
+			self.__compare_macros(hostdump, macros)
+			if hostdump['status'] != '0':
+				self.__update_host_status(hostdump['hostid'], 0)
+				self.__changed.append('enable host')
+		else:
+			hostid = self.__create_host(hostname, ip, hostgroups, templates)
+			self.__changed.append('create host')
+			for macro, value in macros.items():
+				self.__create_macro(hostid, macro, value)
+
+	def __get_hostgroupids(self, hostgroups):
+		hostgroupids = []
+		for hostgroup in hostgroups:
+			hostgroupids.append({'groupid': self.__find_hostgroupid(hostgroup)})
+		return hostgroupids
+
+	def __get_templateids(self, templates):
+		templateids = []
+		for template in templates:
+			templateids.append({'templateid': self.__find_templateid(template)})
+		return templateids
+
+	def __create_host(self, hostname, ip, hostgroups, templates):
+		req = {
+			'method': 'host.create',
+			'params': {
+				'host': hostname,
+				'interfaces': {
+					'type': 1,
+					'main': 1,
+					'useip': 1,
+					'ip': ip,
+					'dns': '',
+					'port': '10050',
+				},
+				'groups': self.__get_hostgroupids(hostgroups),
+				'templates': self.__get_templateids(templates),
+			},
+		}
+
+		result = self.__zconn.send(req)
+		try:
+			return result['hostids'][0]
+		except (KeyError, IndexError):
+			raise ZabbixAPIError('Error: cannot create host: %s' % hostname)
+
+	def __create_macro(self, hostid, macro, value):
+		req = {
+			'method': 'usermacro.create',
+			'params': {
+				'hostid': hostid,
+				'macro': macro,
+				'value': value,
+			},
+		}
+
+		result = self.__zconn.send(req)
+		try:
+			return result['hostmacroids'][0]
+		except (KeyError, IndexError):
+			raise ZabbixAPIError('Error: cannot create macro for hostname: %s' % hostname)
+
+	def __update_macro(self, macroid, macro, value):
+		req = {
+			'method': 'usermacro.update',
+			'params': {
+				'hostid': hostid,
+				'macro': macro,
+				'value': value,
+			},
+		}
+
+		result = self.__zconn.send(req)
+		try:
+			return result['hostmacroids'][0]
+		except (KeyError, IndexError):
+			raise ZabbixAPIError('Error: cannot update macro id: %s' % macroid)
+
+	def __delete_macro(self, macroid):
+		req = {
+			'method': 'usermacro.delete',
+			'params': [
+				macroid,
+			],
+		}
+
+		result = self.__zconn.send(req)
+		try:
+			return result['hostmacroids'][0]
+		except (KeyError, IndexError):
+			raise ZabbixAPIError('Error: cannot delete macro id: %s' % macroid)
+
+	def __get_hostgroup_hosts(self, hostgroup):
+		req = {
+			'method': 'hostgroup.get',
+			'params': {
+				'output': [
+					'groupid',
+				],
+				'selectHosts': [
+					'host',
+					'hostid',
+					'status',
+				],
+				'filter': {
+					'name': [
+						hostgroup
+					],
+				},
+			},
+		}
+
+		result = self.__zconn.send(req)
+		return result
+
+	def disable_invalid_hosts(self, default_hostgroup, all_hosts):
+		result = self.__get_hostgroup_hosts(default_hostgroup)
+		for group in result:
+			for host in group['hosts']:
+				if host['host'] not in all_hosts and host['status'] == '0':
+					self.__update_host_status(host['hostid'], 1)
+					self.__changed.append('disable host: %s' % host['host'])
+
+	def remove_invalid_hosts(self, default_hostgroup, all_hosts):
+		result = self.__get_hostgroup_hosts(default_hostgroup)
+		for group in result:
+			for host in group['hosts']:
+				if host['host'] not in all_hosts:
+					self.__remove_host(host['hostid'])
+					self.__changed.append('remove host: %s' % host['host'])
+
+def main():
+	module = AnsibleModule(
+		argument_spec=dict(
+			action=dict(default='sync_host', choices=['sync_host', 'disable_invalid']),
+			hostname=dict(default=None),
+			ipv4=dict(default=None),
+			default_group=dict(required=True, default=None),
+			groups=dict(default=None),
+			templates=dict(default=None),
+			macros=dict(default=None),
+			all_hosts=dict(default=None),
+			remove=dict(default=False, type='bool'),
+			api_url=dict(required=True, default=None),
+			api_user=dict(required=True, default=None),
+			api_password=dict(required=True, default=None),
+			api_basic_auth_user=dict(default=''),
+			api_basic_auth_password=dict(default=''),
+		),
+		supports_check_mode=False,
+	)
+
+	try:
+		module.params['api_url']
+		module.params['api_user']
+		module.params['api_password']
+	except NameError:
+			module.fail_json(msg='missing required API parameter(s)')
+
+	if module.params['action'] == 'sync_host':
+		try:
+			module.params['hostname']
+			module.params['ipv4']
+			module.params['templates']
+			module.params['groups']
+			module.params['default_group']
+			module.params['macros']
+		except NameError:	
+			module.fail_json(msg='missing parameter(s) for action %s' % module.params['action'])
+
+		macros = module.params['macros'].split(',')
+		groups = module.params['groups'].split(',')
+		templates = module.params['templates'].split(',')
+		groups.append(module.params['default_group'])
+		try:
+			zapi = ZabbixAPI(
+				module.params['api_url'],
+				module.params['api_user'],
+				module.params['api_password'],
+				module.params['api_basic_auth_user'],
+				module.params['api_basic_auth_password'],
+			)
+			zapi.sync_host(
+				module.params['hostname'],
+				module.params['ipv4'],
+				groups,
+				macros,
+				templates,
+			)
+		except ZabbixAPIError, e:
+			module.fail_json(msg=str(e))
+
+	elif module.params['action'] == 'disable_invalid':
+		try:
+			module.params['all_hosts']
+			module.params['default_group']
+		except NameError:
+			module.fail_json(msg='missing parameter(s) for action %s' % module.params['action'])
+		all_hosts = module.params['all_hosts'].split(',')
+		try:
+			zapi = ZabbixAPI(
+				module.params['api_url'],
+				module.params['api_user'],
+				module.params['api_password'],
+				module.params['api_basic_auth_user'],
+				module.params['api_basic_auth_password'],
+			)
+			if module.params['remove']:
+				zapi.remove_invalid_hosts(module.params['default_group'], all_hosts)
+			else:
+				zapi.disable_invalid_hosts(module.params['default_group'], all_hosts)
+		except ZabbixAPIError, e:
+			module.fail_json(msg=str(e))
+	else:
+		module.fail_json(msg='wrong action parameter')
+
+	if zapi.get_changed():
+		module.exit_json(changed=True, msg='; '.join(zapi.get_changed()))
+	else:
+		module.exit_json(changed=False, msg='success')
+
+from ansible.module_utils.basic import *
+main()

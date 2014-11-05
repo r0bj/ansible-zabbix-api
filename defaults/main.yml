@@ -1,0 +1,14 @@
+---
+
+zabbix:
+  default_group: ansible
+  templates: []
+  groups: []
+  macros: ''
+
+zabbix_api:
+  url: ''
+  user: ''
+  password: ''
+  basic_auth_user: ''
+  basic_auth_password: ''

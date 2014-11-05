@@ -1,0 +1,32 @@
+---
+
+- name: install packages
+  apt: name=python-requests state=present
+  sudo: True
+
+- name: sync host with zabbix
+  zabbix-api:
+    action=sync_host
+    hostname={{ inventory_hostname }}
+    ipv4={{ ansible_default_ipv4.address }}
+    default_group={{ zabbix.default_group }}
+    groups="{{ zabbix.groups|join(',') }}"
+    templates="{{ zabbix.templates|join(',') }}"
+    macros="{{ zabbix.macros }}"
+    api_url={{ zabbix_api.url }}
+    api_user={{ zabbix_api.user }}
+    api_password={{ zabbix_api.password }}
+    api_basic_auth_user={{ zabbix_api.basic_auth_user }}
+    api_basic_auth_password={{ zabbix_api.basic_auth_password }}
+
+- name: disable invalid hosts from zabbix
+  zabbix-api:
+    action=disable_invalid
+    default_group={{ zabbix.default_group }}
+    all_hosts="{{ groups.all|join(',') }}"
+    api_url={{ zabbix_api.url }}
+    api_user={{ zabbix_api.user }}
+    api_password={{ zabbix_api.password }}
+    api_basic_auth_user={{ zabbix_api.basic_auth_user }}
+    api_basic_auth_password={{ zabbix_api.basic_auth_password }}
+  run_once: True
