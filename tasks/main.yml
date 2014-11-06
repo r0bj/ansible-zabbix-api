@@ -1,6 +1,6 @@
 ---
 
-- name: install packages
+- name: install python-requests
   apt: name=python-requests state=present
   sudo: True
 
@@ -9,24 +9,24 @@
     action=sync_host
     hostname={{ inventory_hostname }}
     ipv4={{ ansible_default_ipv4.address }}
-    default_group={{ zabbix.default_group }}
-    groups="{{ zabbix.groups|join(',') }}"
-    templates="{{ zabbix.templates|join(',') }}"
-    macros="{{ zabbix.macros }}"
+    default_group={{ zabbix.default_group if zabbix.default_group is defined else 'ansible' }}
+    groups="{{ zabbix.groups|join(',') if zabbix.groups is defined else '' }}"
+    templates="{{ zabbix.templates|join(',') if zabbix.templates is defined else '' }}"
+    macros="{{ zabbix.macros if zabbix.macros is defined else '' }}"
     api_url={{ zabbix_api.url }}
     api_user={{ zabbix_api.user }}
     api_password={{ zabbix_api.password }}
-    api_basic_auth_user={{ zabbix_api.basic_auth_user }}
-    api_basic_auth_password={{ zabbix_api.basic_auth_password }}
+    api_basic_auth_user={{ zabbix_api.basic_auth_user if zabbix_api.basic_auth_user is defined else '' }}
+    api_basic_auth_password={{ zabbix_api.basic_auth_password if zabbix_api.basic_auth_password is defined else '' }}
 
-- name: disable invalid hosts from zabbix
+- name: disable invalid zabbix hosts
   zabbix-api:
     action=disable_invalid
-    default_group={{ zabbix.default_group }}
+    default_group={{ zabbix.default_group if zabbix.default_group is defined else 'ansible' }}
     all_hosts="{{ groups.all|join(',') }}"
     api_url={{ zabbix_api.url }}
     api_user={{ zabbix_api.user }}
     api_password={{ zabbix_api.password }}
-    api_basic_auth_user={{ zabbix_api.basic_auth_user }}
-    api_basic_auth_password={{ zabbix_api.basic_auth_password }}
+    api_basic_auth_user={{ zabbix_api.basic_auth_user if zabbix_api.basic_auth_user is defined else '' }}
+    api_basic_auth_password={{ zabbix_api.basic_auth_password if zabbix_api.basic_auth_password is defined else '' }}
   run_once: True

@@ -37,12 +37,15 @@ def alarm_handler(signum, frame):
 
 class ZabbixConnection:
 	def __init__(self, url, user, passwd, basicauth_user, basicauth_pass):
-		self.__api_url = url
-		self.__api_user = user
-		self.__api_pass = passwd
-		self.__api_basicauth_user = basicauth_user
-		self.__api_basicauth_pass = basicauth_pass
-		self.__api_token = self.__auth()
+		if url and user and passwd:
+			self.__api_url = url
+			self.__api_user = user
+			self.__api_pass = passwd
+			self.__api_basicauth_user = basicauth_user
+			self.__api_basicauth_pass = basicauth_pass
+			self.__api_token = self.__auth()
+		else:
+			raise ZabbixAPIError('No valid credentials')
 
 	def __callAPI(self, json_data):
 		headers = {
@@ -340,7 +343,7 @@ class ZabbixAPI:
 		for template in templates:
 			if template not in dump_templates:
 				self.__update_host_templates(hostdump['hostid'], templates)
-				self.__changed.append('link to templates: %s' %(', ').join(templates))
+				self.__changed.append('link to template(s): %s' %(', ').join(templates))
 				break
 
 	def __list_to_dict(self, list):
@@ -366,8 +369,18 @@ class ZabbixAPI:
 				self.__create_macro(hostdump['hostid'], keyvalues[keyvalue]['macro'], keyvalues[keyvalue]['value'])
 				self.__changed.append('add macro: %s' %keyvalues[keyvalue]['macro'])
 
+	def __validate_list(self, list):
+		list_validated = []
+		for item in list:
+			if item:
+				list_validated.append(item)
+		return list_validated
+
 	def sync_host(self, hostname, ip, hostgroups, macros, templates):
 		hostdump = self.__get_host_if_exists(hostname)
+		hostgroups = self.__validate_list(hostgroups)
+		templates = self.__validate_list(templates)
+
 		if hostdump:
 			self.__compare_ip(hostdump, ip)
 			self.__compare_hostgroups(hostdump, hostgroups)
