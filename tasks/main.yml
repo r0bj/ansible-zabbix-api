@@ -1,8 +1,14 @@
 ---
 
-- name: install python-requests
+- name: install python-requests (debian)
   apt: name=python-requests state=present
   sudo: True
+  when: ansible_os_family == "Debian"
+
+- name: install python-requests (redhat)
+  yum: name=python-requests state=present
+  sudo: True
+  when: ansible_os_family == "RedHat"
 
 - name: sync host with zabbix
   zabbix-api:
