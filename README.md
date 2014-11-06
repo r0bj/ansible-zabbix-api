@@ -22,27 +22,13 @@ Role Variables
 
 Available variables are listed below, along with default values (see `defaults/main.yml`):
 
-    zabbix:
-      default_group: ansible
-      templates: ''
-      groups: ''
-      macros: ''
-
-    zabbix_api:
-      url: ''
-      user: ''
-      password: ''
-      basic_auth_user: ''
-      basic_auth_password: ''
-      
-- `zabbix.default_group` - Default Zabbix group which all hosts should belongs to. Hosts only from this group are considered during synchronization.
-- `zabbix.templates` - Comma separated list of Zabbix templates which host should be linked to.
-- `zabbix.groups` - Comma separated list of Zabbix groups which host should belongs to.
-- `zabbix.macros` - Comma separated list of Zabbix macros which should be add to the host. Even items are macro key, odd items are macro value, eg.: '{$macro1},value1,{$macro2},value2'.
-
-- `zabbix_api.url` - Zabbix API URL.
-- `zabbix_api.user` and `zabbix_api.password` - Zabbix API credentials.
-- `zabbix_api.basic_auth_user` and `zabbix_api.basic_auth_password` - Optional basic AUTH credentials if required.
+- `zabbix_default_group` - Default Zabbix group which all hosts should belongs to. Hosts only from this group are considered during synchronization (default "ansible").
+- `zabbix_templates` - Comma separated list of Zabbix templates which host should be linked to.
+- `zabbix_groups` - Comma separated list of Zabbix groups which host should belongs to.
+- `zabbix_macros` - Comma separated list of Zabbix macros which should be add to the host. Even items are macro key, odd items are macro value, eg.: '{$macro1},value1,{$macro2},value2'.
+- `zabbix_url` - Zabbix API URL.
+- `zabbix_user` and `zabbix_password` - Zabbix API credentials.
+- `zabbix_basic_auth_user` and `zabbix_basic_auth_password` - Optional basic AUTH credentials if required.
 
 Example
 =======
@@ -50,24 +36,14 @@ Example
 Variables
 ---------
 
-    zabbix_api:
-      url: 'http://zabbixhost.com/api_jsonrpc.php'
-      user: 'ansible'
-      password: 'secretpassword'
+    zabbix_url: 'http://zabbixhost.com/api_jsonrpc.php'
+    zabbix_user: 'ansible'
+    zabbix_password: 'secretpassword'
   
-    zabbix:
-      default_group: ansible
-      templates:
-        - mysql
-        - nginx
-        - php-fpm
-        - LXC Containers
-        - Web Test
-      groups:
-        - LXC Containers
-        - Webservers
-      macros: '{$PAGE_STRING},User logged,{$SNMP_COMMUNITY},public'
-      
+    zabbix_templates: 'mysql,nginx,php-fpm,LXC Containers,Web Test'
+    zabbix_groups: 'LXC Containers,Webservers'
+    zabbix_macros: '{$PAGE_STRING},User logged,{$SNMP_COMMUNITY},public'
+
 Playbook
 --------
 
