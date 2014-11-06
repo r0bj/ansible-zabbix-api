@@ -12,6 +12,8 @@ Web access from nodes managed by ansible to the Zabbix API should be allowed (fi
 
 You can treat ansible inventory as an authoritative source of hosts information and sync it to Zabbix.
 
+Tested on Zabbix 2.4.1.
+
 Requirements
 ============
 
