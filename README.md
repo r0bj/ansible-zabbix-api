@@ -6,7 +6,7 @@ This module will let you synchronize ansible hosts state with Zabbix. It means t
 - templates which host should be linked to;
 - macros which host should contains.
 
-Groups and Tempalates names MUST be already present in Zabbix.
+Groups and Tempalates provided by ansible variables MUST be already present in Zabbix.
 
 Web access from nodes managed by ansible to the Zabbix API should be allowed (firewall).
 
