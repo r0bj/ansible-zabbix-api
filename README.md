@@ -65,6 +65,7 @@ Variables
         - Web Test
       groups:
         - LXC Containers
+        - Webservers
       macros: '{$PAGE_STRING},User logged,{$SNMP_COMMUNITY},public'
       
 Playbook
