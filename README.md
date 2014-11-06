@@ -10,6 +10,8 @@ Groups and Tempalates provided by ansible variables MUST be already present in Z
 
 Web access from nodes managed by ansible to the Zabbix API should be allowed (firewall).
 
+Make sure API user for provided credentials has enough permissions for host groups in Zabbix.
+
 You can treat ansible inventory as an authoritative source of hosts information and sync it to Zabbix.
 
 Tested on Zabbix 2.4.1.
