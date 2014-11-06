@@ -24,8 +24,8 @@ Available variables are listed below, along with default values (see `defaults/m
 
     zabbix:
       default_group: ansible
-      templates: []
-      groups: []
+      templates: ''
+      groups: ''
       macros: ''
 
     zabbix_api:
