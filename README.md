@@ -1,7 +1,7 @@
 ansible Zabbix-API
 ==================
 
-This module will let you synchronize ansible hosts state with Zabbix. It means that it sets hosts via Zabbix API according to ansible variables:
+This module will let you synchronize ansible hosts state with Zabbix. It means that it sets hosts via Zabbix API based on ansible variables:
 
 - groups which host should belongs to;
 - templates which host should be linked to;
