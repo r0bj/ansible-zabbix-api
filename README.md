@@ -47,7 +47,7 @@ Variables
   
     zabbix_templates: 'mysql,nginx,php-fpm,LXC Containers,Web Test'
     zabbix_groups: 'LXC Containers,Webservers'
-    zabbix_macros: '{$PAGE_STRING},User logged,{$SNMP_COMMUNITY},public'
+    zabbix_macros: '{$PAGE_STRING},Welcome on main page,{$SNMP_COMMUNITY},public'
 
 Playbook
 --------
