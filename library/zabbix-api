@@ -376,7 +376,7 @@ class ZabbixAPI:
 				list_validated.append(item)
 		return list_validated
 
-	def sync_host(self, hostname, ip, hostgroups, macros, templates):
+	def sync_host(self, hostname, ip, hostgroups, macros_list, templates):
 		hostdump = self.__get_host_if_exists(hostname)
 		hostgroups = self.__validate_list(hostgroups)
 		templates = self.__validate_list(templates)
@@ -385,13 +385,14 @@ class ZabbixAPI:
 			self.__compare_ip(hostdump, ip)
 			self.__compare_hostgroups(hostdump, hostgroups)
 			self.__compare_templates(hostdump, templates)
-			self.__compare_macros(hostdump, macros)
+			self.__compare_macros(hostdump, macros_list)
 			if hostdump['status'] != '0':
 				self.__update_host_status(hostdump['hostid'], 0)
 				self.__changed.append('enable host')
 		else:
 			hostid = self.__create_host(hostname, ip, hostgroups, templates)
 			self.__changed.append('create host')
+			macros = self.__list_to_dict(macros_list)
 			for macro, value in macros.items():
 				self.__create_macro(hostid, macro, value)
 
