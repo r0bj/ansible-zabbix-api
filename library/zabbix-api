@@ -309,7 +309,7 @@ class ZabbixAPI:
 
 	def __compare_ip(self, hostdump, ip):
 		for interface in hostdump['interfaces']:
-			if interface['main'] == '1':
+			if interface['main'] == '1' and interface['type'] == '1':
 				if interface['ip'] != ip:
 					self.__update_interface_ip(interface['interfaceid'], ip)
 					self.__changed.append('set ip: %s' %ip)
