@@ -3,9 +3,9 @@ ansible Zabbix-API
 
 This module will let you synchronize ansible hosts state with Zabbix. It means that it sets hosts via Zabbix API based on ansible variables:
 
-- groups which host should belongs to;
-- templates which host should be linked to;
-- macros which host should contains.
+- groups the host should belong to;
+- templates the host should be linked to;
+- macros the host should contain.
 
 Groups and Tempalates provided by ansible variables MUST be already present in Zabbix.
 
