@@ -13,7 +13,7 @@ Web access from nodes managed by ansible to the Zabbix API should be allowed (fi
 
 Make sure API user for provided credentials has enough permissions for host groups in Zabbix.
 
-You can treat ansible inventory as an authoritative source of hosts information and sync it to Zabbix.
+You can treat ansible inventory as an authoritative source of host information and sync it to Zabbix.
 
 Tested on Zabbix 2.4.1.
 
@@ -27,10 +27,10 @@ Role Variables
 
 Available variables are listed below, along with default values (see `defaults/main.yml`):
 
-- `zabbix_default_group` - Default Zabbix group which all hosts should belongs to. Hosts only from this group are considered during synchronization (default "ansible").
-- `zabbix_templates` - Comma separated list of Zabbix templates which host should be linked to.
-- `zabbix_groups` - Comma separated list of Zabbix groups which host should belongs to.
-- `zabbix_macros` - Comma separated list of Zabbix macros which should be add to the host. Even items are macro key, odd items are macro value, eg.: '{$macro1},value1,{$macro2},value2'.
+- `zabbix_default_group` - Default Zabbix group all hosts should belong to. Only hosts from this group are considered during synchronization (default "ansible").
+- `zabbix_templates` - Comma separated list of Zabbix templates the host should be linked to.
+- `zabbix_groups` - Comma separated list of Zabbix groups the host should belong to.
+- `zabbix_macros` - Comma separated list of Zabbix macros which should be added to the host. Odd items are macro keys, even items are macro values, eg.: '{$macro1},value1,{$macro2},value2'.
 - `zabbix_url` - Zabbix API URL.
 - `zabbix_user` and `zabbix_password` - Zabbix API credentials.
 - `zabbix_basic_auth_user` and `zabbix_basic_auth_password` - Optional basic AUTH credentials if required.
