@@ -350,8 +350,14 @@ class ZabbixAPI:
 		i = iter(list)
 		return dict(itertools.izip(i, i))
 
+	def __validate_macro_name(self, macros):
+		for key, value in macros.items():
+			if not re.match(r'^\{\$[A-Z0-9_]+\}$', key):
+				raise ZabbixAPIError('Error: macro %s validation failed, allowed characters are A-Z, 0-9, _' % key)
+
 	def __compare_macros(self, hostdump, macros_list):
 		macros = self.__list_to_dict(macros_list)
+		self.__validate_macro_name(macros)
 		keyvalues = {}
 		for key, value in macros.items():
 			keyvalues[key + value] = { 'macro': key, 'value': value }
