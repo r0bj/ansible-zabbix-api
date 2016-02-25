@@ -30,7 +30,7 @@ Available variables are listed below, along with default values (see `defaults/m
 - `zabbix_default_group` - Default Zabbix group all hosts should belong to. Only hosts from this group are considered during synchronization (default "ansible").
 - `zabbix_templates` - Comma separated list of Zabbix templates the host should be linked to.
 - `zabbix_groups` - Comma separated list of Zabbix groups the host should belong to.
-- `zabbix_macros` - Comma separated list of Zabbix macros which should be added to the host. Odd items are macro keys, even items are macro values, eg.: '{$macro1},value1,{$macro2},value2'.
+- `zabbix_macros` - Comma separated list of Zabbix macros which should be added to the host. Odd items are macro keys, even items are macro values, eg.: '{$MACRO1},value1,{$MACRO2},value2'.
 - `zabbix_url` - Zabbix API URL.
 - `zabbix_user` and `zabbix_password` - Zabbix API credentials.
 - `zabbix_basic_auth_user` and `zabbix_basic_auth_password` - Optional basic AUTH credentials if required.
