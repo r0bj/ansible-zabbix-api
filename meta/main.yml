@@ -20,7 +20,7 @@ galaxy_info:
   - name: Debian
     versions:
       - wheezy
-  categories:
+  galaxy_tags:
   - monitoring
 dependencies: []
   
