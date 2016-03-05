@@ -2,12 +2,12 @@
 
 - name: install python-requests (debian)
   apt: name=python-requests state=present
-  sudo: True
+  become: yes
   when: ansible_os_family == "Debian"
 
 - name: install python-requests (redhat)
   yum: name=python-requests state=present
-  sudo: True
+  become: yes
   when: ansible_os_family == "RedHat"
 
 - name: sync host with zabbix
@@ -35,4 +35,4 @@
     api_password={{ zabbix_password }}
     api_basic_auth_user={{ zabbix_basic_auth_user }}
     api_basic_auth_password={{ zabbix_basic_auth_password }}
-  run_once: True
+  run_once: yes
