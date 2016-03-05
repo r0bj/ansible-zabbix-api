@@ -15,7 +15,7 @@ Make sure API user for provided credentials has enough permissions for host grou
 
 You can treat ansible inventory as an authoritative source of host information and sync it to Zabbix.
 
-Tested on Zabbix 2.4.1.
+Tested on Zabbix 3.0.1.
 
 Requirements
 ============
@@ -40,15 +40,15 @@ Example
 
 Variables
 ---------
-
-    zabbix_url: 'http://zabbixhost.com/api_jsonrpc.php'
-    zabbix_user: 'ansible'
-    zabbix_password: 'secretpassword'
+```
+zabbix_url: 'http://zabbixhost.com/api_jsonrpc.php'
+zabbix_user: 'ansible'
+zabbix_password: 'secretpassword'
   
-    zabbix_templates: 'mysql,nginx,php-fpm,LXC Containers,Web Test'
-    zabbix_groups: 'LXC Containers,Webservers'
-    zabbix_macros: '{$PAGE_STRING},Welcome on main page,{$SNMP_COMMUNITY},public'
-
+zabbix_templates: 'mysql,nginx,php-fpm,LXC Containers,Web Test'
+zabbix_groups: 'LXC Containers,Webservers'
+zabbix_macros: '{$PAGE_STRING},Welcome on main page,{$SNMP_COMMUNITY},public'
+```
 Playbook
 --------
 
@@ -56,7 +56,7 @@ Playbook
 - name: zabbix API
   hosts: all
   roles:
-    - role: robj.zabbix-api
+    - role: r0bj.zabbix-api
 ```
 
 License
