@@ -65,4 +65,4 @@ MIT
 
 Author Information
 ==================
-This role was created in 2014 by Robert Jerzak.
+This role was created in 2015 by Robert Jerzak.
