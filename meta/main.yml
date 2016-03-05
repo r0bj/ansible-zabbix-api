@@ -17,6 +17,7 @@ galaxy_info:
       - raring
       - saucy
       - trusty
+      - wily
   - name: Debian
     versions:
       - wheezy
