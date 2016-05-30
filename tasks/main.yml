@@ -11,7 +11,7 @@
   when: ansible_os_family == "RedHat"
 
 - name: sync host with zabbix
-  zabbix-api:
+  zabbix_api:
     action=sync_host
     hostname={{ inventory_hostname }}
     ipv4={{ ansible_default_ipv4.address }}
@@ -26,7 +26,7 @@
     api_basic_auth_password={{ zabbix_basic_auth_password }}
 
 - name: disable invalid zabbix hosts
-  zabbix-api:
+  zabbix_api:
     action=disable_invalid
     default_group={{ zabbix_default_group }}
     all_hosts="{{ groups.all|join(',') }}"
